@@ -22,7 +22,7 @@ import (
 type Process struct {
 	// Image is a container image of this process
 	Image       string
-	Args        *Args
+	Args        Args
 	Log         io.ReadWriter
 	Stdout      io.ReadWriter
 	Stderr      io.ReadWriter
@@ -43,7 +43,7 @@ type Args struct {
 // NewProcess returns the Process struct to execute the named image with the given arguments.
 //
 // It sets only the Image and Args in the returned structure.
-func NewProcess(img string, args *Args) *Process {
+func NewProcess(img string, args Args) *Process {
 	return &Process{
 		Image: img,
 		Args:  args,

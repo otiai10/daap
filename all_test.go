@@ -5,22 +5,25 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/docker/docker/api/types/mount"
 	. "github.com/otiai10/mint"
 )
 
 func TestProcess(t *testing.T) {
-	proc := NewProcess("foo", nil)
+	proc := NewProcess("foo", Args{})
 	Expect(t, proc).TypeOf("*daap.Process")
 }
 
 func TestProcess_Run(t *testing.T) {
-	proc := NewProcess("otiai10/foo", &Args{
-		// Machine: &MachineConfig{
-		// 	Host:     "tcp://192.168.99.100:2376",
-		// 	CertPath: "/Users/otiai10/.docker/machine/machines/example",
-		// },
+
+	image := "otiai10/foo"
+	args := Args{
 		Machine: NewEnvMachine(),
-	})
+		Env:     []string{"NODE_ENV=production"},
+		Mounts:  []mount.Mount{mount.Mount{Type: mount.TypeBind, Source: "/Users/otiai10/tmp", Target: "/test/test"}},
+	}
+
+	proc := NewProcess(image, args)
 	ctx := context.Background()
 	err := proc.Run(ctx)
 	Expect(t, err).ToBe(nil)
