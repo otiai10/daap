@@ -1,0 +1,73 @@
+memo = "c09fe877e5d9d0a2f28c1b2eda417cbc45dc5c4e35afd6124fcdf42b2bfc6954"
+
+[[projects]]
+  name = "github.com/Microsoft/go-winio"
+  packages = ["."]
+  revision = "f533f7a102197536779ea3a8cb881d639e21ec5a"
+  version = "v0.4.2"
+
+[[projects]]
+  name = "github.com/Sirupsen/logrus"
+  packages = ["."]
+  revision = "ba1b36c82c5e05c4f912a88eab0dcd91a171688f"
+  version = "v0.11.5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/docker/distribution"
+  packages = ["digestset","reference"]
+  revision = "49bb3242da57709ec9e3f7588e38608d1eb17156"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/docker/docker"
+  packages = ["api","api/types","api/types/blkiodev","api/types/container","api/types/events","api/types/filters","api/types/image","api/types/mount","api/types/network","api/types/registry","api/types/strslice","api/types/swarm","api/types/time","api/types/versions","api/types/volume","client","pkg/ioutils","pkg/longpath","pkg/mount","pkg/system","pkg/tlsconfig"]
+  revision = "a9fcaee3514c60d997044b246e4c06e9ba80f4f5"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/docker/go-connections"
+  packages = ["nat","sockets","tlsconfig"]
+  revision = "e15c02316c12de00874640cd76311849de2aeed5"
+
+[[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "f2d77a61e3c169b43402a0a1e84f06daf29b8190"
+  version = "v0.3.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/docker/libtrust"
+  packages = ["."]
+  revision = "aabc10ec26b754e797f9028f4589c5b7bd90dc20"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  revision = "eaa60544f31ccf3b0653b1a118b76d33418ff41b"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/opencontainers/image-spec"
+  packages = ["specs-go","specs-go/v1"]
+  revision = "4f04bc480833e58d3b8895d6a232c90cc2cf79e7"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "c605e284fe17294bda444b34710735b29d1a9d90"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context","context/ctxhttp","proxy"]
+  revision = "34057069f4ab13dc4433c68d368737ebeafcccdc"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix","windows"]
+  revision = "dbc2be9168a660ef302e04b6ff6406de6f967473"
