@@ -36,7 +36,7 @@ type Process struct {
 type Args struct {
 	Machine *MachineConfig
 	Env     []string
-	Mounts  []mount.Mount
+	Mounts  []Mount
 	Name    string
 }
 
@@ -170,8 +170,12 @@ func (p *Process) containerConfig() *container.Config {
 }
 
 func (p *Process) hostConfig() *container.HostConfig {
+	mounts := []mount.Mount{}
+	for _, m := range p.Args.Mounts {
+		mounts = append(mounts, m.ToDockerAPITypeMount())
+	}
 	return &container.HostConfig{
-		Mounts: p.Args.Mounts,
+		Mounts: mounts,
 	}
 }
 

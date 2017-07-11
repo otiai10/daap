@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/docker/docker/api/types/mount"
 	. "github.com/otiai10/mint"
 )
 
@@ -23,7 +22,7 @@ func TestProcess_Run(t *testing.T) {
 			"DAAPTEST_FOO=FrostyJack",
 			"DAAPTEST_BAR=BabyBlue",
 		},
-		Mounts: []mount.Mount{mount.Mount{Type: mount.TypeBind, Source: "/home/docker/data", Target: "/var/data"}},
+		Mounts: []Mount{Mount{Type: TypeBind, Source: "/home/docker/data", Target: "/var/data"}},
 	}
 
 	proc := NewProcess(image, args)
