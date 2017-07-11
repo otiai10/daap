@@ -16,10 +16,10 @@ const (
 
 // Mount ...
 type Mount struct {
-	Type   MountType
-	Source string
-	Target string
-	// ReadOnly    bool        `json:",omitempty"`
+	Type     MountType
+	Source   string
+	Target   string
+	ReadOnly bool
 	// Consistency Consistency `json:",omitempty"`
 	// BindOptions   *BindOptions   `json:",omitempty"`
 	// VolumeOptions *VolumeOptions `json:",omitempty"`
@@ -29,8 +29,20 @@ type Mount struct {
 // ToDockerAPITypeMount converts daap.Mount to types.mount.Mount
 func (m Mount) ToDockerAPITypeMount() mount.Mount {
 	return mount.Mount{
-		Type:   mount.Type(m.Type),
-		Source: m.Source,
-		Target: m.Target,
+		Type:     mount.Type(m.Type),
+		Source:   m.Source,
+		Target:   m.Target,
+		ReadOnly: m.ReadOnly,
+	}
+}
+
+// Volume represents --volume source:target
+func Volume(source, target string, readonly ...bool) Mount {
+	readonly = append(readonly, false)
+	return Mount{
+		Type:     TypeBind,
+		Source:   source,
+		Target:   target,
+		ReadOnly: readonly[0],
 	}
 }

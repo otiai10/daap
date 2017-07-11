@@ -22,7 +22,7 @@ func TestProcess_Run(t *testing.T) {
 			"DAAPTEST_FOO=FrostyJack",
 			"DAAPTEST_BAR=BabyBlue",
 		},
-		Mounts: []Mount{Mount{Type: TypeBind, Source: "/home/docker/data", Target: "/var/data"}},
+		Mounts: []Mount{Volume("/home/docker/data", "/var/data")},
 	}
 
 	proc := NewProcess(image, args)
