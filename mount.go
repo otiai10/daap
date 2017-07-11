@@ -46,3 +46,11 @@ func Volume(source, target string, readonly ...bool) Mount {
 		ReadOnly: readonly[0],
 	}
 }
+
+// VolumesFrom represents --volumes-from containerID
+func VolumesFrom(containerID string) Mount {
+	return Mount{
+		Type:   TypeVolume,
+		Source: containerID,
+	}
+}
