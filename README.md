@@ -18,17 +18,15 @@ func main() {
   ctx := context.Background()
 
   image := "your/image"
-  args := Args{
-    Machine: NewEnvMachine(),
+  args := daap.Args{
+    Machine: daap.NewEnvMachine(),
     Env:     []string{
       "NODE_ENV=production",
     },
-    Mounts:  []mount.Mount{
-      mount.Mount{Type: mount.TypeBind, Source: "/tmp/dev/data", Target: "/var/data"},
+    Mounts:  []daap.Mount{
+      daap.Volume("/tmp/dev/data", "/var/data"),
     },
   }
-
-  proc := NewProcess(image, args)
 
   process := daap.NewProcess(image, args)
 
@@ -38,5 +36,6 @@ func main() {
 
   b, _ := ioutil.ReadAll(process.Stdout)
   fmt.Println(string(b))
+  // Output of "your/image" here
 }
 ```
