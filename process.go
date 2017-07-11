@@ -182,7 +182,9 @@ func (p *Process) networkConfig() *network.NetworkingConfig {
 func (p *Process) drain(hijacked types.HijackedResponse, dest io.Writer) {
 	defer hijacked.Close()
 	for scanner := bufio.NewScanner(hijacked.Reader); scanner.Scan(); {
-		dest.Write(scanner.Bytes())
+		// XXX: the first 8 bytes of hijacked connection should be removed
+		// TODO: Know more about implementation of hijacking and TCP
+		dest.Write(scanner.Bytes()[8:])
 	}
 }
 

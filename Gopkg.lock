@@ -1,4 +1,4 @@
-memo = "c09fe877e5d9d0a2f28c1b2eda417cbc45dc5c4e35afd6124fcdf42b2bfc6954"
+memo = "4d4194100c5731901078629950c2a9740f6a97889629fe22d71b3d8a7be1dbd4"
 
 [[projects]]
   name = "github.com/Microsoft/go-winio"
@@ -53,6 +53,12 @@ memo = "c09fe877e5d9d0a2f28c1b2eda417cbc45dc5c4e35afd6124fcdf42b2bfc6954"
   name = "github.com/opencontainers/image-spec"
   packages = ["specs-go","specs-go/v1"]
   revision = "4f04bc480833e58d3b8895d6a232c90cc2cf79e7"
+
+[[projects]]
+  name = "github.com/otiai10/mint"
+  packages = ["."]
+  revision = "35730131bb808e17c9f26f1204a9bcc6f9e12fb4"
+  version = "1.1"
 
 [[projects]]
   branch = "master"

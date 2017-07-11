@@ -16,11 +16,14 @@ func TestProcess(t *testing.T) {
 
 func TestProcess_Run(t *testing.T) {
 
-	image := "otiai10/foo"
+	image := "otiai10/daap-test"
 	args := Args{
 		Machine: NewEnvMachine(),
-		Env:     []string{"NODE_ENV=production"},
-		Mounts:  []mount.Mount{mount.Mount{Type: mount.TypeBind, Source: "/Users/otiai10/tmp", Target: "/test/test"}},
+		Env: []string{
+			"DAAPTEST_FOO=FrostyJack",
+			"DAAPTEST_BAR=BabyBlue",
+		},
+		Mounts: []mount.Mount{mount.Mount{Type: mount.TypeBind, Source: "/home/docker/data", Target: "/var/data"}},
 	}
 
 	proc := NewProcess(image, args)
@@ -30,5 +33,5 @@ func TestProcess_Run(t *testing.T) {
 
 	b, err := ioutil.ReadAll(proc.Stdout)
 	Expect(t, err).ToBe(nil)
-	Expect(t, string(b)).ToBe("hogeee")
+	Expect(t, string(b)).ToBe("STDOUT: 'main.sh' started.STDOUT: 'main.sh' successfully finished.")
 }
