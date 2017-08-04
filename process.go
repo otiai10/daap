@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 	"time"
 
@@ -30,6 +31,7 @@ type Process struct {
 	hijackedErr types.HijackedResponse
 	client      *client.Client
 	ID          string
+	Remove      bool
 }
 
 // Args represents argument for the process, representing machine (where to run), input (what to mount), output (where to output).
@@ -45,8 +47,9 @@ type Args struct {
 // It sets only the Image and Args in the returned structure.
 func NewProcess(img string, args Args) *Process {
 	return &Process{
-		Image: img,
-		Args:  args,
+		Image:  img,
+		Args:   args,
+		Remove: true,
 	}
 }
 
@@ -211,5 +214,16 @@ func (p *Process) cleanup(ctx context.Context) error {
 	if err := p.client.ContainerRemove(ctx, p.ID, types.ContainerRemoveOptions{}); err != nil {
 		return err
 	}
+
+	log.Println("[DEBUG]", "TRY TO REMOVE IMAGE!!!!!")
+	// if p.Remove {
+	if _, err := p.client.ImageRemove(ctx, p.Image, types.ImageRemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	}); err != nil {
+		return err
+	}
+	// }
+
 	return nil
 }
