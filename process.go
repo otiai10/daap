@@ -189,11 +189,11 @@ func (p *Process) drain(hijacked types.HijackedResponse, dest io.Writer) {
 		b := append(scanner.Bytes(), []byte("\n")...)
 		// XXX: the first 8 bytes of hijacked connection should be removed
 		// TODO: Know more about implementation of hijacking and TCP
-		if len(b) < 8 {
-			dest.Write(b)
-		} else {
-			dest.Write(b[8:])
-		}
+		// if len(b) < 8 {
+		dest.Write(b)
+		// } else {
+		// 	dest.Write(b[8:])
+		// }
 	}
 }
 
