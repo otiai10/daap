@@ -95,7 +95,7 @@ func (p *Process) Start(ctx context.Context) error {
 	}
 	defer r.Close()
 	for scanner := bufio.NewScanner(r); scanner.Scan(); {
-		p.Log.Write(scanner.Bytes())
+		p.Log.Write(append(scanner.Bytes(), []byte("\n")...))
 	}
 
 	// Create container
