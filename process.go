@@ -189,13 +189,20 @@ func (p *Process) drain(hijacked types.HijackedResponse, dest io.Writer) {
 	defer hijacked.Close()
 	for scanner := bufio.NewScanner(hijacked.Reader); scanner.Scan(); {
 		b := append(scanner.Bytes(), []byte("\n")...)
-		// XXX: the first 8 bytes of hijacked connection should be removed
-		// TODO: Know more about implementation of hijacking and TCP
-		// if len(b) < 8 {
-		dest.Write(b)
-		// } else {
-		// 	dest.Write(b[8:])
-		// }
+		// Hijacked stream has a 8-bytes-length header
+		// See https://docs.docker.com/engine/api/v1.30/#operation/ContainerAttach for more information
+		if len(b) <= 8 {
+			dest.Write(b)
+			continue
+		}
+		var fixedHeader [4]byte
+		copy(fixedHeader[:], b[:4])
+		switch fixedHeader {
+		case [4]byte{0, 0, 0, 0}, [4]byte{1, 0, 0, 0}, [4]byte{2, 0, 0, 0}:
+			dest.Write(b[8:])
+		default:
+			dest.Write(b)
+		}
 	}
 }
 
