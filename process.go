@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -215,7 +214,6 @@ func (p *Process) cleanup(ctx context.Context) error {
 		return err
 	}
 
-	log.Println("[DEBUG]", "TRY TO REMOVE IMAGE!!!!!")
 	// if p.Remove {
 	if _, err := p.client.ImageRemove(ctx, p.Image, types.ImageRemoveOptions{
 		Force:         true,
