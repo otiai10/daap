@@ -32,5 +32,5 @@ func TestProcess_Run(t *testing.T) {
 
 	b, err := ioutil.ReadAll(proc.Stdout)
 	Expect(t, err).ToBe(nil)
-	Expect(t, string(b)).ToBe("STDOUT: 'main.sh' started.STDOUT: 'main.sh' successfully finished.")
+	Expect(t, string(b)).ToBe("STDOUT: 'main.sh' started.\nSTDOUT: 'main.sh' successfully finished.\n")
 }

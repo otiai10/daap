@@ -157,10 +157,9 @@ func (p *Process) StdoutPipe() io.Reader {
 //
 // Wait releases any resources associated with the Cmd.
 func (p *Process) Wait(ctx context.Context) error {
-	p.cleanup(ctx)
 	p.drain(p.hijackedOut, p.Stdout)
 	p.drain(p.hijackedErr, p.Stderr)
-	return nil
+	return p.cleanup(ctx)
 }
 
 // --- private ---
@@ -206,16 +205,15 @@ func (p *Process) drain(hijacked types.HijackedResponse, dest io.Writer) {
 	}
 }
 
+// "cleanup" cleans up everything on container layer,
+// it doesn't care about hijacked stdout/stderr layers.
 func (p *Process) cleanup(ctx context.Context) error {
 	res, err := p.client.ContainerInspect(ctx, p.ID)
 	if err != nil {
 		return err
 	}
 	if res.ContainerJSONBase.State.Running {
-		timeout := 2 * time.Minute
-		if err := p.client.ContainerStop(ctx, p.ID, &timeout); err != nil {
-			return err
-		}
+		return fmt.Errorf("This container is still running, not to be cleanup")
 	}
 	if err := p.client.ContainerRemove(ctx, p.ID, types.ContainerRemoveOptions{}); err != nil {
 		return err
