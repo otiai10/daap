@@ -7,7 +7,7 @@ Docker as a Process
 ```sh
 % git clone git@github.com:otiai10/daap.git
 % cd daap
-% ./test.sh
+% ./test
 ```
 
 # Example
