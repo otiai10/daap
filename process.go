@@ -29,6 +29,7 @@ type Process struct {
 	hijackedOut types.HijackedResponse
 	hijackedErr types.HijackedResponse
 	client      *client.Client
+	finished    chan error
 	ID          string
 	Remove      bool
 }
@@ -46,9 +47,10 @@ type Args struct {
 // It sets only the Image and Args in the returned structure.
 func NewProcess(img string, args Args) *Process {
 	return &Process{
-		Image:  img,
-		Args:   args,
-		Remove: true,
+		Image:    img,
+		Args:     args,
+		Remove:   true,
+		finished: make(chan error, 1),
 	}
 }
 
@@ -128,23 +130,24 @@ func (p *Process) Start(ctx context.Context) error {
 	}
 	p.hijackedErr = hijackedErr
 
-	if err := client.ContainerStart(ctx, cntnr.ID, types.ContainerStartOptions{}); err != nil {
-		return err
-	}
+	go func() {
+		err := client.ContainerStart(ctx, cntnr.ID, types.ContainerStartOptions{})
+		p.finished <- err
+	}()
 
 	return nil
 }
 
 // StderrPipe returns a pipe that will be connected to the container's standard error when the command starts.
-func (p *Process) StderrPipe() io.Reader {
-	return p.hijackedErr.Reader
+func (p *Process) StderrPipe() types.HijackedResponse {
+	return p.hijackedErr
 }
 
 // StdoutPipe returns a pipe that will be connected to the container's standard output when the command starts.
 //
 // Wait will close the pipe after seeing the container exit, so most callers need not close the pipe themselves; however, an implication is that it is incorrect to call Wait before all reads from the pipe have completed. For the same reason, it is incorrect to call Run when using StdoutPipe. See the example for idiomatic usage.
-func (p *Process) StdoutPipe() io.Reader {
-	return p.hijackedOut.Reader
+func (p *Process) StdoutPipe() types.HijackedResponse {
+	return p.hijackedOut
 }
 
 // Wait waits for the container to exit. It must have been started by `Start`.
@@ -208,6 +211,11 @@ func (p *Process) drain(hijacked types.HijackedResponse, dest io.Writer) {
 // "cleanup" cleans up everything on container layer,
 // it doesn't care about hijacked stdout/stderr layers.
 func (p *Process) cleanup(ctx context.Context) error {
+	err := <-p.finished
+	close(p.finished)
+	if err != nil {
+		return err
+	}
 	res, err := p.client.ContainerInspect(ctx, p.ID)
 	if err != nil {
 		return err
