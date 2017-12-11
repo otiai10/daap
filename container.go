@@ -90,7 +90,7 @@ func (c *Container) Start(ctx context.Context) error {
 
 // Exec executes specified command on this container.
 // Before calling "Exec", this container must be created and started.
-func (c *Container) Exec(ctx context.Context, cmd ...string) (<-chan HijackedPayload, error) {
+func (c *Container) Exec(ctx context.Context, cmd ...string) (<-chan HijackedStreamPayload, error) {
 
 	dkclient, err := c.Args.Machine.CreateClient()
 	if err != nil {
@@ -119,19 +119,15 @@ func (c *Container) Exec(ctx context.Context, cmd ...string) (<-chan HijackedPay
 		return nil, fmt.Errorf("Exec Start Error: %v", err)
 	}
 
-	stream := make(chan HijackedPayload)
+	stream := make(chan HijackedStreamPayload)
 	scanner := bufio.NewScanner(hijacked.Reader)
 	go func() {
 		defer close(stream)
 		defer hijacked.Close()
 		for scanner.Scan() {
-			stream <- HijackedPayload{
-				Type: MIXED,
-				Data: scanner.Bytes(),
-			}
+			stream <- CreatePayloadFromRawBytes(MIXED, scanner.Bytes())
 		}
 		return
 	}()
-
 	return stream, nil
 }
