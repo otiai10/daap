@@ -2,10 +2,9 @@ package daap
 
 import (
 	"bufio"
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -29,28 +28,30 @@ func NewContainer(img string, args Args) *Container {
 }
 
 // PullImage pulls specified image to this container.
-func (c *Container) PullImage(ctx context.Context, out io.Writer) error {
+func (c *Container) PullImage(ctx context.Context) (<-chan ImagePullResponsePayload, error) {
 	dkclient, err := c.Args.Machine.CreateClient()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer dkclient.Close()
 	rc, err := dkclient.ImagePull(ctx, c.Image, types.ImagePullOptions{})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer rc.Close()
 
-	if out == nil {
-		out = bytes.NewBuffer(nil)
-	}
+	stream := make(chan ImagePullResponsePayload)
 	scanner := bufio.NewScanner(rc)
-	for scanner.Scan() {
-		fmt.Fprintf(out, "\r%s", scanner.Text())
-	}
-	fmt.Fprintf(out, "\n")
+	go func() {
+		defer close(stream)
+		defer rc.Close()
+		for scanner.Scan() {
+			payload := ImagePullResponsePayload{}
+			json.Unmarshal(scanner.Bytes(), &payload)
+			stream <- payload
+		}
+	}()
 
-	return scanner.Err()
+	return stream, nil
 }
 
 // Create creates container itself on a machine specified as args for NewContainer.
