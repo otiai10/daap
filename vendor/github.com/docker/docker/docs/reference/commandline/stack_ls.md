@@ -24,17 +24,12 @@ Aliases:
   ls, list
 
 Options:
-      --help            Print usage
-      --format string   Pretty-print stacks using a Go template
+      --help   Print usage
 ```
-
-## Description
 
 Lists the stacks.
 
-## Examples
-
-The following command shows all stacks and some additional information:
+For example, the following command shows all stacks and some additional information:
 
 ```bash
 $ docker stack ls
@@ -44,31 +39,7 @@ vossibility-stack  6
 myapp              2
 ```
 
-### Formatting
-
-The formatting option (`--format`) pretty-prints stacks using a Go template.
-
-Valid placeholders for the Go template are listed below:
-
-| Placeholder | Description        |
-| ----------- | ------------------ |
-| `.Name`     | Stack name         |
-| `.Services` | Number of services |
-
-When using the `--format` option, the `stack ls` command either outputs
-the data exactly as the template declares or, when using the
-`table` directive, includes column headers as well.
-
-The following example uses a template without headers and outputs the
-`Name` and `Services` entries separated by a colon for all stacks:
-
-```bash
-$ docker stack ls --format "{{.Name}}: {{.Services}}"
-web-server: 1
-web-cache: 4
-```
-
-## Related commands
+## Related information
 
 * [stack deploy](stack_deploy.md)
 * [stack ps](stack_ps.md)

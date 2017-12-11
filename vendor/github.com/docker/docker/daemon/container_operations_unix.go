@@ -3,7 +3,6 @@
 package daemon
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cloudflare/cfssl/log"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/daemon/links"
 	"github.com/docker/docker/pkg/idtools"
@@ -20,7 +20,7 @@ import (
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/docker/runconfig"
 	"github.com/docker/libnetwork"
-	"github.com/opencontainers/selinux/go-selinux/label"
+	"github.com/opencontainers/runc/libcontainer/label"
 	"github.com/pkg/errors"
 )
 
@@ -59,34 +59,32 @@ func (daemon *Daemon) setupLinkedContainers(container *container.Container) ([]s
 
 func (daemon *Daemon) getIpcContainer(container *container.Container) (*container.Container, error) {
 	containerID := container.HostConfig.IpcMode.Container()
-	container, err := daemon.GetContainer(containerID)
+	c, err := daemon.GetContainer(containerID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot join IPC of a non running container: %s", container.ID)
+		return nil, err
 	}
-	return container, daemon.checkContainer(container, containerIsRunning, containerIsNotRestarting)
+	if !c.IsRunning() {
+		return nil, fmt.Errorf("cannot join IPC of a non running container: %s", containerID)
+	}
+	if c.IsRestarting() {
+		return nil, errContainerIsRestarting(container.ID)
+	}
+	return c, nil
 }
 
 func (daemon *Daemon) getPidContainer(container *container.Container) (*container.Container, error) {
 	containerID := container.HostConfig.PidMode.Container()
-	container, err := daemon.GetContainer(containerID)
+	c, err := daemon.GetContainer(containerID)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot join PID of a non running container: %s", container.ID)
+		return nil, err
 	}
-	return container, daemon.checkContainer(container, containerIsRunning, containerIsNotRestarting)
-}
-
-func containerIsRunning(c *container.Container) error {
 	if !c.IsRunning() {
-		return errors.Errorf("container %s is not running", c.ID)
+		return nil, fmt.Errorf("cannot join PID of a non running container: %s", containerID)
 	}
-	return nil
-}
-
-func containerIsNotRestarting(c *container.Container) error {
 	if c.IsRestarting() {
-		return errContainerIsRestarting(c.ID)
+		return nil, errContainerIsRestarting(container.ID)
 	}
-	return nil
+	return c, nil
 }
 
 func (daemon *Daemon) setupIpcDirs(c *container.Container) error {
@@ -120,7 +118,7 @@ func (daemon *Daemon) setupIpcDirs(c *container.Container) error {
 				return err
 			}
 
-			shmSize := int64(daemon.configStore.ShmSize)
+			shmSize := container.DefaultSHMSize
 			if c.HostConfig.ShmSize != 0 {
 				shmSize = c.HostConfig.ShmSize
 			}
@@ -146,43 +144,45 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 	localMountPath := c.SecretMountPath()
 	logrus.Debugf("secrets: setting up secret dir: %s", localMountPath)
 
-	// retrieve possible remapped range start for root UID, GID
-	rootUID, rootGID := daemon.GetRemappedUIDGID()
-	// create tmpfs
-	if err := idtools.MkdirAllAs(localMountPath, 0700, rootUID, rootGID); err != nil {
-		return errors.Wrap(err, "error creating secret local mount path")
-	}
-
 	defer func() {
 		if setupErr != nil {
 			// cleanup
 			_ = detachMounted(localMountPath)
 
 			if err := os.RemoveAll(localMountPath); err != nil {
-				logrus.Errorf("error cleaning up secret mount: %s", err)
+				log.Errorf("error cleaning up secret mount: %s", err)
 			}
 		}
 	}()
 
+	// retrieve possible remapped range start for root UID, GID
+	rootUID, rootGID := daemon.GetRemappedUIDGID()
+	// create tmpfs
+	if err := idtools.MkdirAllAs(localMountPath, 0700, rootUID, rootGID); err != nil {
+		return errors.Wrap(err, "error creating secret local mount path")
+	}
 	tmpfsOwnership := fmt.Sprintf("uid=%d,gid=%d", rootUID, rootGID)
 	if err := mount.Mount("tmpfs", localMountPath, "tmpfs", "nodev,nosuid,noexec,"+tmpfsOwnership); err != nil {
 		return errors.Wrap(err, "unable to setup secret mount")
 	}
 
-	if c.DependencyStore == nil {
-		return fmt.Errorf("secret store is not initialized")
-	}
-
 	for _, s := range c.SecretReferences {
-		// TODO (ehazlett): use type switch when more are supported
-		if s.File == nil {
-			logrus.Error("secret target type is not a file target")
-			continue
+		if c.SecretStore == nil {
+			return fmt.Errorf("secret store is not initialized")
 		}
 
-		// secrets are created in the SecretMountPath on the host, at a
-		// single level
-		fPath := c.SecretFilePath(*s)
+		// TODO (ehazlett): use type switch when more are supported
+		if s.File == nil {
+			return fmt.Errorf("secret target type is not a file target")
+		}
+
+		targetPath := filepath.Clean(s.File.Name)
+		// ensure that the target is a filename only; no paths allowed
+		if targetPath != filepath.Base(targetPath) {
+			return fmt.Errorf("error creating secret: secret must not be a path")
+		}
+
+		fPath := filepath.Join(localMountPath, targetPath)
 		if err := idtools.MkdirAllAs(filepath.Dir(fPath), 0700, rootUID, rootGID); err != nil {
 			return errors.Wrap(err, "error creating secret mount path")
 		}
@@ -191,7 +191,7 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 			"name": s.File.Name,
 			"path": fPath,
 		}).Debug("injecting secret")
-		secret := c.DependencyStore.Secrets().Get(s.SecretID)
+		secret := c.SecretStore.Get(s.SecretID)
 		if secret == nil {
 			return fmt.Errorf("unable to get secret from secret store")
 		}
@@ -213,8 +213,6 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 		}
 	}
 
-	label.Relabel(localMountPath, c.MountLabel, false)
-
 	// remount secrets ro
 	if err := mount.Mount("tmpfs", localMountPath, "tmpfs", "remount,ro,"+tmpfsOwnership); err != nil {
 		return errors.Wrap(err, "unable to remount secret dir as readonly")
@@ -223,84 +221,11 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 	return nil
 }
 
-func (daemon *Daemon) setupConfigDir(c *container.Container) (setupErr error) {
-	if len(c.ConfigReferences) == 0 {
-		return nil
-	}
-
-	localPath := c.ConfigsDirPath()
-	logrus.Debugf("configs: setting up config dir: %s", localPath)
-
-	// retrieve possible remapped range start for root UID, GID
-	rootUID, rootGID := daemon.GetRemappedUIDGID()
-	// create tmpfs
-	if err := idtools.MkdirAllAs(localPath, 0700, rootUID, rootGID); err != nil {
-		return errors.Wrap(err, "error creating config dir")
-	}
-
-	defer func() {
-		if setupErr != nil {
-			if err := os.RemoveAll(localPath); err != nil {
-				logrus.Errorf("error cleaning up config dir: %s", err)
-			}
-		}
-	}()
-
-	if c.DependencyStore == nil {
-		return fmt.Errorf("config store is not initialized")
-	}
-
-	for _, configRef := range c.ConfigReferences {
-		// TODO (ehazlett): use type switch when more are supported
-		if configRef.File == nil {
-			logrus.Error("config target type is not a file target")
-			continue
-		}
-
-		fPath := c.ConfigFilePath(*configRef)
-
-		log := logrus.WithFields(logrus.Fields{"name": configRef.File.Name, "path": fPath})
-
-		if err := idtools.MkdirAllAs(filepath.Dir(fPath), 0700, rootUID, rootGID); err != nil {
-			return errors.Wrap(err, "error creating config path")
-		}
-
-		log.Debug("injecting config")
-		config := c.DependencyStore.Configs().Get(configRef.ConfigID)
-		if config == nil {
-			return fmt.Errorf("unable to get config from config store")
-		}
-		if err := ioutil.WriteFile(fPath, config.Spec.Data, configRef.File.Mode); err != nil {
-			return errors.Wrap(err, "error injecting config")
-		}
-
-		uid, err := strconv.Atoi(configRef.File.UID)
-		if err != nil {
-			return err
-		}
-		gid, err := strconv.Atoi(configRef.File.GID)
-		if err != nil {
-			return err
-		}
-
-		if err := os.Chown(fPath, rootUID+uid, rootGID+gid); err != nil {
-			return errors.Wrap(err, "error setting ownership for config")
-		}
-	}
-
-	return nil
-}
-
-func killProcessDirectly(cntr *container.Container) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Block until the container to stops or timeout.
-	status := <-cntr.Wait(ctx, container.WaitConditionNotRunning)
-	if status.Err() != nil {
+func killProcessDirectly(container *container.Container) error {
+	if _, err := container.WaitStop(10 * time.Second); err != nil {
 		// Ensure that we don't kill ourselves
-		if pid := cntr.GetPID(); pid != 0 {
-			logrus.Infof("Container %s failed to exit within 10 seconds of kill - trying direct SIGKILL", stringid.TruncateID(cntr.ID))
+		if pid := container.GetPID(); pid != 0 {
+			logrus.Infof("Container %s failed to exit within 10 seconds of kill - trying direct SIGKILL", stringid.TruncateID(container.ID))
 			if err := syscall.Kill(pid, 9); err != nil {
 				if err != syscall.ESRCH {
 					return err

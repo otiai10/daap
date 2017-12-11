@@ -25,17 +25,15 @@ Options:
       --help            Print usage
 ```
 
-## Description
-
 Returns information about a plugin. By default, this command renders all results
 in a JSON array.
 
-## Examples
+Example output:
 
-
-```none
+```bash
 $ docker plugin inspect tiborvass/sample-volume-plugin:latest
-
+```
+```JSON
 {
   "Id": "8c74c978c434745c3ade82f1bc0acf38d04990eaf494fa507c16d9f1daa99c21",
   "Name": "tiborvass/sample-volume-plugin:latest",
@@ -142,18 +140,18 @@ $ docker plugin inspect tiborvass/sample-volume-plugin:latest
   }
 }
 ```
-
 (output formatted for readability)
 
-### Formatting the output
 
 ```bash
 $ docker plugin inspect -f '{{.Id}}' tiborvass/sample-volume-plugin:latest
-
+```
+```
 8c74c978c434745c3ade82f1bc0acf38d04990eaf494fa507c16d9f1daa99c21
 ```
 
-## Related commands
+
+## Related information
 
 * [plugin create](plugin_create.md)
 * [plugin enable](plugin_enable.md)

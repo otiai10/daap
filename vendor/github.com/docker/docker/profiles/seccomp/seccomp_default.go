@@ -217,12 +217,10 @@ func DefaultProfile() *types.Seccomp {
 				"prctl",
 				"pread64",
 				"preadv",
-				"preadv2",
 				"prlimit64",
 				"pselect6",
 				"pwrite64",
 				"pwritev",
-				"pwritev2",
 				"read",
 				"readahead",
 				"readlink",
@@ -385,28 +383,6 @@ func DefaultProfile() *types.Seccomp {
 			Args: []*types.Arg{
 				{
 					Index: 0,
-					Value: 0x20000,
-					Op:    types.OpEqualTo,
-				},
-			},
-		},
-		{
-			Names:  []string{"personality"},
-			Action: types.ActAllow,
-			Args: []*types.Arg{
-				{
-					Index: 0,
-					Value: 0x20008,
-					Op:    types.OpEqualTo,
-				},
-			},
-		},
-		{
-			Names:  []string{"personality"},
-			Action: types.ActAllow,
-			Args: []*types.Arg{
-				{
-					Index: 0,
 					Value: 0xffffffff,
 					Op:    types.OpEqualTo,
 				},
@@ -414,19 +390,8 @@ func DefaultProfile() *types.Seccomp {
 		},
 		{
 			Names: []string{
-				"sync_file_range2",
-			},
-			Action: types.ActAllow,
-			Args:   []*types.Arg{},
-			Includes: types.Filter{
-				Arches: []string{"ppc64le"},
-			},
-		},
-		{
-			Names: []string{
 				"arm_fadvise64_64",
 				"arm_sync_file_range",
-				"sync_file_range2",
 				"breakpoint",
 				"cacheflush",
 				"set_tls",
@@ -612,7 +577,6 @@ func DefaultProfile() *types.Seccomp {
 				"settimeofday",
 				"stime",
 				"adjtimex",
-				"clock_settime",
 			},
 			Action: types.ActAllow,
 			Args:   []*types.Arg{},

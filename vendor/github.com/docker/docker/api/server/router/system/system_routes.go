@@ -35,8 +35,8 @@ func (s *systemRouter) getInfo(ctx context.Context, w http.ResponseWriter, r *ht
 	if err != nil {
 		return err
 	}
-	if s.cluster != nil {
-		info.Swarm = s.cluster.Info()
+	if s.clusterProvider != nil {
+		info.Swarm = s.clusterProvider.Info()
 	}
 
 	if versions.LessThan(httputils.VersionFromContext(ctx), "1.25") {
@@ -71,7 +71,7 @@ func (s *systemRouter) getVersion(ctx context.Context, w http.ResponseWriter, r 
 }
 
 func (s *systemRouter) getDiskUsage(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
-	du, err := s.backend.SystemDiskUsage(ctx)
+	du, err := s.backend.SystemDiskUsage()
 	if err != nil {
 		return err
 	}

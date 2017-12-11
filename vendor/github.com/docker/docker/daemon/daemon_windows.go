@@ -3,16 +3,13 @@ package daemon
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/Microsoft/hcsshim"
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/container"
-	"github.com/docker/docker/daemon/config"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/parsers"
@@ -38,21 +35,10 @@ const (
 	windowsMinCPUPercent = 1
 	windowsMaxCPUPercent = 100
 	windowsMinCPUCount   = 1
-
-	errInvalidState = syscall.Errno(0x139F)
 )
-
-// Windows has no concept of an execution state directory. So use config.Root here.
-func getPluginExecRoot(root string) string {
-	return filepath.Join(root, "plugins")
-}
 
 func getBlkioWeightDevices(config *containertypes.HostConfig) ([]blkiodev.WeightDevice, error) {
 	return nil, nil
-}
-
-func (daemon *Daemon) parseSecurityOpt(container *container.Container, hostConfig *containertypes.HostConfig) error {
-	return parseSecurityOpt(container, hostConfig)
 }
 
 func parseSecurityOpt(container *container.Container, config *containertypes.HostConfig) error {
@@ -146,17 +132,6 @@ func verifyContainerResources(resources *containertypes.Resources, isHyperv bool
 		return warnings, fmt.Errorf("range of CPUs is from 0.01 to %d.00, as there are only %d CPUs available", sysinfo.NumCPU(), sysinfo.NumCPU())
 	}
 
-	osv := system.GetOSVersion()
-	if resources.NanoCPUs > 0 && isHyperv && osv.Build < 16175 {
-		leftoverNanoCPUs := resources.NanoCPUs % 1e9
-		if leftoverNanoCPUs != 0 && resources.NanoCPUs > 1e9 {
-			resources.NanoCPUs = ((resources.NanoCPUs + 1e9/2) / 1e9) * 1e9
-			warningString := fmt.Sprintf("Your current OS version does not support Hyper-V containers with NanoCPUs greater than 1000000000 but not divisible by 1000000000. NanoCPUs rounded to %d", resources.NanoCPUs)
-			warnings = append(warnings, warningString)
-			logrus.Warn(warningString)
-		}
-	}
-
 	if len(resources.BlkioDeviceReadBps) > 0 {
 		return warnings, fmt.Errorf("invalid option: Windows does not support BlkioDeviceReadBps")
 	}
@@ -225,16 +200,19 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 
 	w, err := verifyContainerResources(&hostConfig.Resources, hyperv)
 	warnings = append(warnings, w...)
-	return warnings, err
+	if err != nil {
+		return warnings, err
+	}
+	return warnings, nil
 }
 
-// reloadPlatform updates configuration with platform specific options
-// and updates the passed attributes
-func (daemon *Daemon) reloadPlatform(config *config.Config, attributes map[string]string) {
+// platformReload update configuration with platform specific options
+func (daemon *Daemon) platformReload(config *Config) map[string]string {
+	return map[string]string{}
 }
 
 // verifyDaemonSettings performs validation of daemon config struct
-func verifyDaemonSettings(config *config.Config) error {
+func verifyDaemonSettings(config *Config) error {
 	return nil
 }
 
@@ -254,21 +232,20 @@ func checkSystem() error {
 	if vmcompute.Load() != nil {
 		return fmt.Errorf("Failed to load vmcompute.dll. Ensure that the Containers role is installed.")
 	}
-
 	return nil
 }
 
 // configureKernelSecuritySupport configures and validate security support for the kernel
-func configureKernelSecuritySupport(config *config.Config, driverName string) error {
+func configureKernelSecuritySupport(config *Config, driverName string) error {
 	return nil
 }
 
 // configureMaxThreads sets the Go runtime max threads threshold
-func configureMaxThreads(config *config.Config) error {
+func configureMaxThreads(config *Config) error {
 	return nil
 }
 
-func (daemon *Daemon) initNetworkController(config *config.Config, activeSandboxes map[string]interface{}) (libnetwork.NetworkController, error) {
+func (daemon *Daemon) initNetworkController(config *Config, activeSandboxes map[string]interface{}) (libnetwork.NetworkController, error) {
 	netOptions, err := daemon.networkOptions(config, nil, nil)
 	if err != nil {
 		return nil, err
@@ -365,10 +342,8 @@ func (daemon *Daemon) initNetworkController(config *config.Config, activeSandbox
 		name := v.Name
 
 		// If there is no nat network create one from the first NAT network
-		// encountered if it doesn't already exist
-		if !defaultNetworkExists &&
-			runconfig.DefaultDaemonNetworkMode() == containertypes.NetworkMode(strings.ToLower(v.Type)) &&
-			n == nil {
+		// encountered
+		if !defaultNetworkExists && runconfig.DefaultDaemonNetworkMode() == containertypes.NetworkMode(strings.ToLower(v.Type)) {
 			name = runconfig.DefaultDaemonNetworkMode().NetworkName()
 			defaultNetworkExists = true
 		}
@@ -396,7 +371,7 @@ func (daemon *Daemon) initNetworkController(config *config.Config, activeSandbox
 	return controller, nil
 }
 
-func initBridgeDriver(controller libnetwork.NetworkController, config *config.Config) error {
+func initBridgeDriver(controller libnetwork.NetworkController, config *Config) error {
 	if _, err := controller.NetworkByName(runconfig.DefaultDaemonNetworkMode().NetworkName()); err == nil {
 		return nil
 	}
@@ -408,8 +383,8 @@ func initBridgeDriver(controller libnetwork.NetworkController, config *config.Co
 	var ipamOption libnetwork.NetworkOption
 	var subnetPrefix string
 
-	if config.BridgeConfig.FixedCIDR != "" {
-		subnetPrefix = config.BridgeConfig.FixedCIDR
+	if config.bridgeConfig.FixedCIDR != "" {
+		subnetPrefix = config.bridgeConfig.FixedCIDR
 	} else {
 		// TP5 doesn't support properly detecting subnet
 		osv := system.GetOSVersion()
@@ -454,11 +429,11 @@ func (daemon *Daemon) cleanupMounts() error {
 	return nil
 }
 
-func setupRemappedRoot(config *config.Config) ([]idtools.IDMap, []idtools.IDMap, error) {
+func setupRemappedRoot(config *Config) ([]idtools.IDMap, []idtools.IDMap, error) {
 	return nil, nil, nil
 }
 
-func setupDaemonRoot(config *config.Config, rootDir string, rootUID, rootGID int) error {
+func setupDaemonRoot(config *Config, rootDir string, rootUID, rootGID int) error {
 	config.Root = rootDir
 	// Create the root directory if it doesn't exists
 	if err := system.MkdirAllWithACL(config.Root, 0); err != nil && !os.IsExist(err) {
@@ -499,7 +474,7 @@ func (daemon *Daemon) conditionalUnmountOnCleanup(container *container.Container
 	return nil
 }
 
-func driverOptions(config *config.Config) []nwconfig.Option {
+func driverOptions(config *Config) []nwconfig.Option {
 	return []nwconfig.Option{}
 }
 
@@ -613,7 +588,7 @@ func rootFSToAPIType(rootfs *image.RootFS) types.RootFS {
 	}
 }
 
-func setupDaemonProcess(config *config.Config) error {
+func setupDaemonProcess(config *Config) error {
 	return nil
 }
 

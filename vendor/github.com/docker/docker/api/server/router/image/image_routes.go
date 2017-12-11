@@ -118,7 +118,8 @@ func (s *imageRouter) postImagesCreate(ctx context.Context, w http.ResponseWrite
 		if !output.Flushed() {
 			return err
 		}
-		output.Write(streamformatter.FormatError(err))
+		sf := streamformatter.NewJSONStreamFormatter()
+		output.Write(sf.FormatError(err))
 	}
 
 	return nil
@@ -163,7 +164,8 @@ func (s *imageRouter) postImagesPush(ctx context.Context, w http.ResponseWriter,
 		if !output.Flushed() {
 			return err
 		}
-		output.Write(streamformatter.FormatError(err))
+		sf := streamformatter.NewJSONStreamFormatter()
+		output.Write(sf.FormatError(err))
 	}
 	return nil
 }
@@ -188,7 +190,8 @@ func (s *imageRouter) getImagesGet(ctx context.Context, w http.ResponseWriter, r
 		if !output.Flushed() {
 			return err
 		}
-		output.Write(streamformatter.FormatError(err))
+		sf := streamformatter.NewJSONStreamFormatter()
+		output.Write(sf.FormatError(err))
 	}
 	return nil
 }
@@ -204,7 +207,7 @@ func (s *imageRouter) postImagesLoad(ctx context.Context, w http.ResponseWriter,
 	output := ioutils.NewWriteFlusher(w)
 	defer output.Close()
 	if err := s.backend.LoadImage(r.Body, output, quiet); err != nil {
-		output.Write(streamformatter.FormatError(err))
+		output.Write(streamformatter.NewJSONStreamFormatter().FormatError(err))
 	}
 	return nil
 }
@@ -250,9 +253,9 @@ func (s *imageRouter) getImagesJSON(ctx context.Context, w http.ResponseWriter, 
 		return err
 	}
 
+	version := httputils.VersionFromContext(ctx)
 	filterParam := r.Form.Get("filter")
-	// FIXME(vdemeester) This has been deprecated in 1.13, and is target for removal for v17.12
-	if filterParam != "" {
+	if versions.LessThan(version, "1.28") && filterParam != "" {
 		imageFilters.Add("reference", filterParam)
 	}
 
@@ -333,7 +336,7 @@ func (s *imageRouter) postImagesPrune(ctx context.Context, w http.ResponseWriter
 		return err
 	}
 
-	pruneReport, err := s.backend.ImagesPrune(ctx, pruneFilters)
+	pruneReport, err := s.backend.ImagesPrune(pruneFilters)
 	if err != nil {
 		return err
 	}

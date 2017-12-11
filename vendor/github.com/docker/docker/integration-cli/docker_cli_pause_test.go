@@ -3,26 +3,25 @@ package main
 import (
 	"strings"
 
-	"github.com/docker/docker/integration-cli/checker"
-	"github.com/docker/docker/integration-cli/cli"
+	"github.com/docker/docker/pkg/integration/checker"
 	"github.com/go-check/check"
 )
 
 func (s *DockerSuite) TestPause(c *check.C) {
 	testRequires(c, IsPausable)
+	defer unpauseAllContainers()
 
 	name := "testeventpause"
 	runSleepingContainer(c, "-d", "--name", name)
 
-	cli.DockerCmd(c, "pause", name)
-	pausedContainers := strings.Fields(
-		cli.DockerCmd(c, "ps", "-f", "status=paused", "-q", "-a").Combined(),
-	)
+	dockerCmd(c, "pause", name)
+	pausedContainers, err := getSliceOfPausedContainers()
+	c.Assert(err, checker.IsNil)
 	c.Assert(len(pausedContainers), checker.Equals, 1)
 
-	cli.DockerCmd(c, "unpause", name)
+	dockerCmd(c, "unpause", name)
 
-	out := cli.DockerCmd(c, "events", "--since=0", "--until", daemonUnixTime(c)).Combined()
+	out, _ := dockerCmd(c, "events", "--since=0", "--until", daemonUnixTime(c))
 	events := strings.Split(strings.TrimSpace(out), "\n")
 	actions := eventActionsByIDAndType(c, events, name, "container")
 
@@ -32,6 +31,7 @@ func (s *DockerSuite) TestPause(c *check.C) {
 
 func (s *DockerSuite) TestPauseMultipleContainers(c *check.C) {
 	testRequires(c, IsPausable)
+	defer unpauseAllContainers()
 
 	containers := []string{
 		"testpausewithmorecontainers1",
@@ -40,15 +40,14 @@ func (s *DockerSuite) TestPauseMultipleContainers(c *check.C) {
 	for _, name := range containers {
 		runSleepingContainer(c, "-d", "--name", name)
 	}
-	cli.DockerCmd(c, append([]string{"pause"}, containers...)...)
-	pausedContainers := strings.Fields(
-		cli.DockerCmd(c, "ps", "-f", "status=paused", "-q", "-a").Combined(),
-	)
+	dockerCmd(c, append([]string{"pause"}, containers...)...)
+	pausedContainers, err := getSliceOfPausedContainers()
+	c.Assert(err, checker.IsNil)
 	c.Assert(len(pausedContainers), checker.Equals, len(containers))
 
-	cli.DockerCmd(c, append([]string{"unpause"}, containers...)...)
+	dockerCmd(c, append([]string{"unpause"}, containers...)...)
 
-	out := cli.DockerCmd(c, "events", "--since=0", "--until", daemonUnixTime(c)).Combined()
+	out, _ := dockerCmd(c, "events", "--since=0", "--until", daemonUnixTime(c))
 	events := strings.Split(strings.TrimSpace(out), "\n")
 
 	for _, name := range containers {

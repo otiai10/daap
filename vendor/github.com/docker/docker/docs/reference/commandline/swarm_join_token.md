@@ -26,15 +26,11 @@ Options:
       --rotate   Rotate join token
 ```
 
-## Description
-
 Join tokens are secrets that allow a node to join the swarm. There are two
 different join tokens available, one for the worker role and one for the manager
 role. You pass the token using the `--token` flag when you run
 [swarm join](swarm_join.md). Nodes use the join token only when they join the
 swarm.
-
-## Examples
 
 You can view or rotate the join tokens using `swarm join-token`.
 
@@ -104,12 +100,6 @@ because the join token is only used for authorizing new nodes joining the swarm.
 
 Only print the token. Do not print a complete command for joining.
 
-## Related commands
+## Related information
 
-* [swarm ca](swarm_ca.md)
-* [swarm init](swarm_init.md)
 * [swarm join](swarm_join.md)
-* [swarm leave](swarm_leave.md)
-* [swarm unlock](swarm_unlock.md)
-* [swarm unlock-key](swarm_unlock_key.md)
-* [swarm update](swarm_update.md)

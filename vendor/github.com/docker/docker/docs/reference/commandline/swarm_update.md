@@ -31,22 +31,15 @@ Options:
       --task-history-limit int          Task history retention limit (default 5)
 ```
 
-## Description
-
 Updates a swarm with new parameter values. This command must target a manager node.
 
-## Examples
 
 ```bash
 $ docker swarm update --cert-expiry 720h
 ```
 
-## Related commands
+## Related information
 
-* [swarm ca](swarm_ca.md)
 * [swarm init](swarm_init.md)
 * [swarm join](swarm_join.md)
-* [swarm join-token](swarm_join_token.md)
 * [swarm leave](swarm_leave.md)
-* [swarm unlock](swarm_unlock.md)
-* [swarm unlock-key](swarm_unlock_key.md)

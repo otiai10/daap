@@ -87,7 +87,7 @@ func TestHealthStates(t *testing.T) {
 			}
 		case <-timer.C:
 			if expectedErr != nil {
-				t.Fatal("time limit exceeded, didn't get expected error")
+				t.Fatalf("time limit exceeded, didn't get expected error")
 			}
 		}
 	}

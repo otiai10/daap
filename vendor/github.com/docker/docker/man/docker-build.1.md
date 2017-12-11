@@ -6,13 +6,10 @@ docker-build - Build an image from a Dockerfile
 
 # SYNOPSIS
 **docker build**
-[**--add-host**[=*[]*]]
 [**--build-arg**[=*[]*]]
-[**--cache-from**[=*[]*]]
 [**--cpu-shares**[=*0*]]
 [**--cgroup-parent**[=*CGROUP-PARENT*]]
 [**--help**]
-[**--iidfile**[=*CIDFILE*]]
 [**-f**|**--file**[=*PATH/Dockerfile*]]
 [**-squash**] *Experimental*
 [**--force-rm**]
@@ -32,7 +29,6 @@ docker-build - Build an image from a Dockerfile
 [**--cpu-quota**[=*0*]]
 [**--cpuset-cpus**[=*CPUSET-CPUS*]]
 [**--cpuset-mems**[=*CPUSET-MEMS*]]
-[**--target**[=*[]*]]
 [**--ulimit**[=*[]*]]
 PATH | URL | -
 
@@ -66,7 +62,7 @@ set as the **URL**, the repository is cloned locally and then sent as the contex
    **Experimental Only**
    Once the image is built, squash the new layers into a new image with a single
    new layer. Squashing does not destroy any existing image, rather it creates a new
-   image with the content of the squashed layers. This effectively makes it look
+   image with the content of the squshed layers. This effectively makes it look
    like all `Dockerfile` commands were created with a single layer. The build
    cache is preserved with this method.
 
@@ -77,12 +73,6 @@ set as the **URL**, the repository is cloned locally and then sent as the contex
    **Note**: using this option you may see significantly more space used due to
    storing two copies of the image, one for the build cache with all the cache
    layers in tact, and one for the squashed version.
-
-**--add-host**=[]
-   Add a custom host-to-IP mapping (host:ip)
-
-   Add a line to /etc/hosts. The format is hostname:ip.  The **--add-host**
-option can be set multiple times.
 
 **--build-arg**=*variable*
    name and value of a **buildarg**.
@@ -95,9 +85,6 @@ option can be set multiple times.
    or for variable expansion in other Dockerfile instructions. This is not meant
    for passing secret values. [Read more about the buildargs instruction](https://docs.docker.com/engine/reference/builder/#arg)
 
-**--cache-from**=""
-   Set image that will be used as a build cache source.
-
 **--force-rm**=*true*|*false*
    Always remove intermediate containers, even after unsuccessful builds. The default is *false*.
 
@@ -109,9 +96,6 @@ option can be set multiple times.
 
 **--no-cache**=*true*|*false*
    Do not use cache when building the image. The default is *false*.
-
-**--iidfile**=""
-   Write the image ID to the file
 
 **--help**
   Print usage statement
@@ -237,9 +221,6 @@ two memory nodes.
 
   If the path is not absolute, the path is considered relative to the `cgroups` path of the init process.
 Cgroups are created if they do not already exist.
-
-**--target**=""
-   Set the target build stage name.
 
 **--ulimit**=[]
   Ulimit options

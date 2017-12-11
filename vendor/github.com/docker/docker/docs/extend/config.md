@@ -51,17 +51,9 @@ Config provides the base accessible fields for working with V0 plugin format
 
       currently supported:
 
-        - **docker.volumedriver/1.0**
+      	- **docker.volumedriver/1.0**
 
-        - **docker.networkdriver/1.0**
-
-        - **docker.ipamdriver/1.0**
-
-        - **docker.authz/1.0**
-
-        - **docker.logdriver/1.0**
-
-        - **docker.metricscollector/1.0**
+      	- **docker.authz/1.0**
 
     - **`socket`** *string*
 
@@ -119,11 +111,6 @@ Config provides the base accessible fields for working with V0 plugin format
 
 	  options of the mount.
 
-- **`ipchost`** *boolean*
-   Access to host ipc namespace.
-- **`pidhost`** *boolean*
-   Access to host pid namespace.
-
 - **`propagatedMount`** *string*
 
    path to be mounted as rshared, so that mounts under that path are visible to docker. This is useful for volume plugins.
@@ -166,27 +153,27 @@ Config provides the base accessible fields for working with V0 plugin format
 
     - **`capabilities`** *string array*
 
-       capabilities of the plugin (*Linux only*), see list [`here`](https://github.com/opencontainers/runc/blob/master/libcontainer/SPEC.md#security)
+          capabilities of the plugin (*Linux only*), see list [`here`](https://github.com/opencontainers/runc/blob/master/libcontainer/SPEC.md#security)
 
     - **`allowAllDevices`** *boolean*
 
-	   If `/dev` is bind mounted from the host, and allowAllDevices is set to true, the plugin will have `rwm` access to all devices on the host.
+	If `/dev` is bind mounted from the host, and allowAllDevices is set to true, the plugin will have `rwm` access to all devices on the host.
 
     - **`devices`** *PluginDevice array*
 
-       device of the plugin, (*Linux only*), struct consisting of the following fields, see [`DEVICES`](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#devices)
+          device of the plugin, (*Linux only*), struct consisting of the following fields, see [`DEVICES`](https://github.com/opencontainers/runtime-spec/blob/master/config-linux.md#devices)
 
-         - **`name`** *string*
+          - **`name`** *string*
 
-	       name of the device.
+	      name of the device.
 
-         - **`description`** *string*
+          - **`description`** *string*
 
-           description of the device.
+              description of the device.
 
-         - **`path`** *string*
+          - **`path`** *string*
 
-           path of the device.
+              path of the device.
 
 ## Example Config
 

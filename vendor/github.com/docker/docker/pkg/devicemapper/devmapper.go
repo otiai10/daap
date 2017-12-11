@@ -1,4 +1,4 @@
-// +build linux,cgo
+// +build linux
 
 package devicemapper
 
@@ -257,7 +257,7 @@ func (t *Task) getNextTarget(next unsafe.Pointer) (nextPtr unsafe.Pointer, start
 // UdevWait waits for any processes that are waiting for udev to complete the specified cookie.
 func UdevWait(cookie *uint) error {
 	if res := DmUdevWait(*cookie); res != 1 {
-		logrus.Debugf("devicemapper: Failed to wait on udev cookie %d, %d", *cookie, res)
+		logrus.Debugf("devicemapper: Failed to wait on udev cookie %d", *cookie)
 		return ErrUdevWait
 	}
 	return nil
@@ -328,10 +328,11 @@ func RemoveDevice(name string) error {
 		return err
 	}
 
-	cookie := new(uint)
-	if err := task.setCookie(cookie, 0); err != nil {
+	var cookie uint
+	if err := task.setCookie(&cookie, 0); err != nil {
 		return fmt.Errorf("devicemapper: Can not set cookie: %s", err)
 	}
+	defer UdevWait(&cookie)
 
 	dmSawBusy = false // reset before the task is run
 	if err = task.run(); err != nil {
@@ -341,7 +342,7 @@ func RemoveDevice(name string) error {
 		return fmt.Errorf("devicemapper: Error running RemoveDevice %s", err)
 	}
 
-	return UdevWait(cookie)
+	return nil
 }
 
 // RemoveDeviceDeferred is a useful helper for cleaning up a device, but deferred.
@@ -360,15 +361,11 @@ func RemoveDeviceDeferred(name string) error {
 	// set a task cookie and disable library fallback, or else libdevmapper will
 	// disable udev dm rules and delete the symlink under /dev/mapper by itself,
 	// even if the removal is deferred by the kernel.
-	cookie := new(uint)
+	var cookie uint
 	var flags uint16
 	flags = DmUdevDisableLibraryFallback
-	if err := task.setCookie(cookie, flags); err != nil {
+	if err := task.setCookie(&cookie, flags); err != nil {
 		return fmt.Errorf("devicemapper: Can not set cookie: %s", err)
-	}
-
-	if err = task.run(); err != nil {
-		return fmt.Errorf("devicemapper: Error running RemoveDeviceDeferred %s", err)
 	}
 
 	// libdevmapper and udev relies on System V semaphore for synchronization,
@@ -380,8 +377,13 @@ func RemoveDeviceDeferred(name string) error {
 	// this call will not wait for the deferred removal's final executing, since no
 	// udev event will be generated, and the semaphore's value will not be incremented
 	// by udev, what UdevWait is just cleaning up the semaphore.
+	defer UdevWait(&cookie)
 
-	return UdevWait(cookie)
+	if err = task.run(); err != nil {
+		return fmt.Errorf("devicemapper: Error running RemoveDeviceDeferred %s", err)
+	}
+
+	return nil
 }
 
 // CancelDeferredRemove cancels a deferred remove for a device.
@@ -469,18 +471,19 @@ func CreatePool(poolName string, dataFile, metadataFile *os.File, poolBlockSize 
 		return fmt.Errorf("devicemapper: Can't add target %s", err)
 	}
 
-	cookie := new(uint)
+	var cookie uint
 	var flags uint16
 	flags = DmUdevDisableSubsystemRulesFlag | DmUdevDisableDiskRulesFlag | DmUdevDisableOtherRulesFlag
-	if err := task.setCookie(cookie, flags); err != nil {
+	if err := task.setCookie(&cookie, flags); err != nil {
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
+	defer UdevWait(&cookie)
 
 	if err := task.run(); err != nil {
 		return fmt.Errorf("devicemapper: Error running deviceCreate (CreatePool) %s", err)
 	}
 
-	return UdevWait(cookie)
+	return nil
 }
 
 // ReloadPool is the programmatic example of "dmsetup reload".
@@ -502,7 +505,7 @@ func ReloadPool(poolName string, dataFile, metadataFile *os.File, poolBlockSize 
 	}
 
 	if err := task.run(); err != nil {
-		return fmt.Errorf("devicemapper: Error running ReloadPool %s", err)
+		return fmt.Errorf("devicemapper: Error running deviceCreate %s", err)
 	}
 
 	return nil
@@ -656,16 +659,17 @@ func ResumeDevice(name string) error {
 		return err
 	}
 
-	cookie := new(uint)
-	if err := task.setCookie(cookie, 0); err != nil {
+	var cookie uint
+	if err := task.setCookie(&cookie, 0); err != nil {
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
+	defer UdevWait(&cookie)
 
 	if err := task.run(); err != nil {
 		return fmt.Errorf("devicemapper: Error running deviceResume %s", err)
 	}
 
-	return UdevWait(cookie)
+	return nil
 }
 
 // CreateDevice creates a device with the specified poolName with the specified device id.
@@ -753,16 +757,18 @@ func activateDevice(poolName string, name string, deviceID int, size uint64, ext
 		return fmt.Errorf("devicemapper: Can't add node %s", err)
 	}
 
-	cookie := new(uint)
-	if err := task.setCookie(cookie, 0); err != nil {
+	var cookie uint
+	if err := task.setCookie(&cookie, 0); err != nil {
 		return fmt.Errorf("devicemapper: Can't set cookie %s", err)
 	}
+
+	defer UdevWait(&cookie)
 
 	if err := task.run(); err != nil {
 		return fmt.Errorf("devicemapper: Error running deviceCreate (ActivateDevice) %s", err)
 	}
 
-	return UdevWait(cookie)
+	return nil
 }
 
 // CreateSnapDeviceRaw creates a snapshot device. Caller needs to suspend and resume the origin device if it is active.
@@ -786,7 +792,7 @@ func CreateSnapDeviceRaw(poolName string, deviceID int, baseDeviceID int) error 
 		if dmSawExist {
 			return ErrDeviceIDExists
 		}
-		return fmt.Errorf("devicemapper: Error running deviceCreate (CreateSnapDeviceRaw) %s", err)
+		return fmt.Errorf("devicemapper: Error running deviceCreate (createSnapDevice) %s", err)
 	}
 
 	return nil

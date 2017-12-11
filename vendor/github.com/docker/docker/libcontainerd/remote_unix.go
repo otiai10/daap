@@ -19,9 +19,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	containerd "github.com/containerd/containerd/api/grpc/types"
+	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/docker/docker/pkg/locker"
-	"github.com/docker/docker/pkg/system"
+	sysinfo "github.com/docker/docker/pkg/system"
+	"github.com/docker/docker/utils"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
@@ -80,7 +81,7 @@ func New(stateDir string, options ...RemoteOption) (_ Remote, err error) {
 		}
 	}
 
-	if err := system.MkdirAll(stateDir, 0700); err != nil {
+	if err := sysinfo.MkdirAll(stateDir, 0700); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +155,7 @@ func (r *remote) handleConnectionChange() {
 		logrus.Debugf("libcontainerd: containerd health check returned error: %v", err)
 
 		if r.daemonPid != -1 {
-			if r.closeManually {
+			if strings.Contains(err.Error(), "is closing") {
 				// Well, we asked for it to stop, just return
 				return
 			}
@@ -163,8 +164,8 @@ func (r *remote) handleConnectionChange() {
 			transientFailureCount++
 			if transientFailureCount >= maxConnectionRetryCount {
 				transientFailureCount = 0
-				if system.IsProcessAlive(r.daemonPid) {
-					system.KillProcess(r.daemonPid)
+				if utils.IsProcessAlive(r.daemonPid) {
+					utils.KillProcess(r.daemonPid)
 				}
 				<-r.daemonWaitCh
 				if err := r.runContainerdDaemon(); err != nil { //FIXME: Handle error
@@ -187,13 +188,13 @@ func (r *remote) Cleanup() {
 
 	// Wait up to 15secs for it to stop
 	for i := time.Duration(0); i < containerdShutdownTimeout; i += time.Second {
-		if !system.IsProcessAlive(r.daemonPid) {
+		if !utils.IsProcessAlive(r.daemonPid) {
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
-	if system.IsProcessAlive(r.daemonPid) {
+	if utils.IsProcessAlive(r.daemonPid) {
 		logrus.Warnf("libcontainerd: containerd (%d) didn't stop within 15 secs, killing it\n", r.daemonPid)
 		syscall.Kill(r.daemonPid, syscall.SIGKILL)
 	}
@@ -353,7 +354,7 @@ func (r *remote) runContainerdDaemon() error {
 		if err != nil {
 			return err
 		}
-		if system.IsProcessAlive(int(pid)) {
+		if utils.IsProcessAlive(int(pid)) {
 			logrus.Infof("libcontainerd: previous instance of containerd still alive (%d)", pid)
 			r.daemonPid = int(pid)
 			return nil
@@ -416,11 +417,11 @@ func (r *remote) runContainerdDaemon() error {
 	}
 	logrus.Infof("libcontainerd: new containerd process, pid: %d", cmd.Process.Pid)
 	if err := setOOMScore(cmd.Process.Pid, r.oomScore); err != nil {
-		system.KillProcess(cmd.Process.Pid)
+		utils.KillProcess(cmd.Process.Pid)
 		return err
 	}
 	if _, err := f.WriteString(fmt.Sprintf("%d", cmd.Process.Pid)); err != nil {
-		system.KillProcess(cmd.Process.Pid)
+		utils.KillProcess(cmd.Process.Pid)
 		return err
 	}
 

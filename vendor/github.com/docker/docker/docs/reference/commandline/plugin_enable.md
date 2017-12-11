@@ -25,12 +25,9 @@ Options:
       --timeout int   HTTP client timeout (in seconds)
 ```
 
-## Description
-
 Enables a plugin. The plugin must be installed before it can be enabled,
 see [`docker plugin install`](plugin_install.md).
 
-## Examples
 
 The following example shows that the `sample-volume-plugin` plugin is installed,
 but disabled:
@@ -55,7 +52,7 @@ ID                  NAME                             TAG                 DESCRIP
 69553ca1d123        tiborvass/sample-volume-plugin   latest              A test plugin for Docker   true
 ```
 
-## Related commands
+## Related information
 
 * [plugin create](plugin_create.md)
 * [plugin disable](plugin_disable.md)

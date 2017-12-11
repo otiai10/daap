@@ -20,7 +20,8 @@ import (
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/docker/runconfig"
-	"github.com/opencontainers/selinux/go-selinux/label"
+	volumestore "github.com/docker/docker/volume/store"
+	"github.com/opencontainers/runc/libcontainer/label"
 )
 
 // CreateManagedContainer creates a container that is managed by a Service
@@ -142,7 +143,7 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig, managed bool) (
 	}
 	// Make sure NetworkMode has an acceptable value. We do this to ensure
 	// backwards API compatibility.
-	runconfig.SetDefaultNetModeIfBlank(container.HostConfig)
+	container.HostConfig = runconfig.SetDefaultNetModeIfBlank(container.HostConfig)
 
 	daemon.updateContainerNetworkSettings(container, endpointsConfigs)
 
@@ -150,32 +151,16 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig, managed bool) (
 		logrus.Errorf("Error saving new container to disk: %v", err)
 		return nil, err
 	}
-	daemon.Register(container)
-	stateCtr.set(container.ID, "stopped")
+	if err := daemon.Register(container); err != nil {
+		return nil, err
+	}
 	daemon.LogContainerEvent(container, "create")
 	return container, nil
 }
 
-func toHostConfigSelinuxLabels(labels []string) []string {
-	for i, l := range labels {
-		labels[i] = "label=" + l
-	}
-	return labels
-}
-
-func (daemon *Daemon) generateSecurityOpt(hostConfig *containertypes.HostConfig) ([]string, error) {
-	for _, opt := range hostConfig.SecurityOpt {
-		con := strings.Split(opt, "=")
-		if con[0] == "label" {
-			// Caller overrode SecurityOpts
-			return nil, nil
-		}
-	}
-	ipcMode := hostConfig.IpcMode
-	pidMode := hostConfig.PidMode
-	privileged := hostConfig.Privileged
+func (daemon *Daemon) generateSecurityOpt(ipcMode containertypes.IpcMode, pidMode containertypes.PidMode, privileged bool) ([]string, error) {
 	if ipcMode.IsHost() || pidMode.IsHost() || privileged {
-		return toHostConfigSelinuxLabels(label.DisableSecOpt()), nil
+		return label.DisableSecOpt(), nil
 	}
 
 	var ipcLabel []string
@@ -189,7 +174,7 @@ func (daemon *Daemon) generateSecurityOpt(hostConfig *containertypes.HostConfig)
 		}
 		ipcLabel = label.DupSecOpt(c.ProcessLabel)
 		if pidContainer == "" {
-			return toHostConfigSelinuxLabels(ipcLabel), err
+			return ipcLabel, err
 		}
 	}
 	if pidContainer != "" {
@@ -200,7 +185,7 @@ func (daemon *Daemon) generateSecurityOpt(hostConfig *containertypes.HostConfig)
 
 		pidLabel = label.DupSecOpt(c.ProcessLabel)
 		if ipcContainer == "" {
-			return toHostConfigSelinuxLabels(pidLabel), err
+			return pidLabel, err
 		}
 	}
 
@@ -210,7 +195,7 @@ func (daemon *Daemon) generateSecurityOpt(hostConfig *containertypes.HostConfig)
 				return nil, fmt.Errorf("--ipc and --pid containers SELinux labels aren't the same")
 			}
 		}
-		return toHostConfigSelinuxLabels(pidLabel), nil
+		return pidLabel, nil
 	}
 	return nil, nil
 }
@@ -225,13 +210,8 @@ func (daemon *Daemon) setRWLayer(container *container.Container) error {
 		layerID = img.RootFS.ChainID()
 	}
 
-	rwLayerOpts := &layer.CreateRWLayerOpts{
-		MountLabel: container.MountLabel,
-		InitFunc:   daemon.getLayerInit(),
-		StorageOpt: container.HostConfig.StorageOpt,
-	}
+	rwLayer, err := daemon.layerStore.CreateRWLayer(container.ID, layerID, container.MountLabel, daemon.getLayerInit(), container.HostConfig.StorageOpt)
 
-	rwLayer, err := daemon.layerStore.CreateRWLayer(container.ID, layerID, rwLayerOpts)
 	if err != nil {
 		return err
 	}
@@ -249,6 +229,9 @@ func (daemon *Daemon) VolumeCreate(name, driverName string, opts, labels map[str
 
 	v, err := daemon.volumes.Create(name, driverName, opts, labels)
 	if err != nil {
+		if volumestore.IsNameConflict(err) {
+			return nil, fmt.Errorf("A volume named %s already exists. Choose a different volume name.", name)
+		}
 		return nil, err
 	}
 

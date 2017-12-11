@@ -9,8 +9,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	containerd "github.com/containerd/containerd/api/grpc/types"
-	containerd_runtime_types "github.com/containerd/containerd/runtime"
+	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/mount"
 	"github.com/golang/protobuf/ptypes"
@@ -75,10 +74,7 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 		}
 	}
 	if specp.Capabilities != nil {
-		sp.Capabilities.Bounding = specp.Capabilities
-		sp.Capabilities.Effective = specp.Capabilities
-		sp.Capabilities.Inheritable = specp.Capabilities
-		sp.Capabilities.Permitted = specp.Capabilities
+		sp.Capabilities = specp.Capabilities
 	}
 
 	p := container.newProcess(processFriendlyName)
@@ -98,7 +94,7 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 		Stdin:           p.fifo(syscall.Stdin),
 		Stdout:          p.fifo(syscall.Stdout),
 		Stderr:          p.fifo(syscall.Stderr),
-		Capabilities:    sp.Capabilities.Effective,
+		Capabilities:    sp.Capabilities,
 		ApparmorProfile: sp.ApparmorProfile,
 		SelinuxLabel:    sp.SelinuxLabel,
 		NoNewPrivileges: sp.NoNewPrivileges,
@@ -468,7 +464,7 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	cont, err := clnt.getContainerdContainer(containerID)
 	// Get its last event
 	ev, eerr := clnt.getContainerLastEvent(containerID)
-	if err != nil || containerd_runtime_types.State(cont.Status) == containerd_runtime_types.Stopped {
+	if err != nil || cont.Status == "Stopped" {
 		if err != nil {
 			logrus.Warnf("libcontainerd: failed to retrieve container %s state: %v", containerID, err)
 		}
@@ -527,18 +523,8 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	if err := clnt.Signal(containerID, int(syscall.SIGTERM)); err != nil {
 		logrus.Errorf("libcontainerd: error sending sigterm to %v: %v", containerID, err)
 	}
-
 	// Let the main loop handle the exit event
 	clnt.remote.Unlock()
-
-	if ev != nil && ev.Type == StatePause {
-		// resume container, it depends on the main loop, so we do it after Unlock()
-		logrus.Debugf("libcontainerd: %s was paused, resuming it so it can die", containerID)
-		if err := clnt.Resume(containerID); err != nil {
-			return fmt.Errorf("failed to resume container: %v", err)
-		}
-	}
-
 	select {
 	case <-time.After(10 * time.Second):
 		if err := clnt.Signal(containerID, int(syscall.SIGKILL)); err != nil {
