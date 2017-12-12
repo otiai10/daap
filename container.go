@@ -108,7 +108,7 @@ func (c *Container) Exec(ctx context.Context, cmd ...string) (<-chan HijackedStr
 		return nil, fmt.Errorf("Exec Create Error: %v", err)
 	}
 
-	hijacked, err := dkclient.ContainerExecAttach(ctx, execute.ID, types.ExecConfig{})
+	hijacked, err := dkclient.ContainerExecAttach(ctx, execute.ID, types.ExecStartCheck{})
 	if err != nil {
 		return nil, fmt.Errorf("Exec Attach Error: %v", err)
 	}

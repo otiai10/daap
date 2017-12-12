@@ -1,8 +1,0 @@
-
-[[dependencies]]
-  branch = "master"
-  name = "github.com/docker/docker"
-
-[[dependencies]]
-  branch = "master"
-  name = "github.com/docker/go-connections"
