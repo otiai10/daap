@@ -2,10 +2,7 @@
 
 Docker as a Process
 
-# Test
+# Example
 
-```sh
-% git clone git@github.com:otiai10/daap.git
-% cd daap
-% ./test
+```go
 ```
