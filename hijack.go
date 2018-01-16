@@ -1,5 +1,7 @@
 package daap
 
+import "bytes"
+
 // HijackedStreamType ...
 type HijackedStreamType uint8
 
@@ -23,6 +25,7 @@ type HijackedStreamPayload struct {
 // CreatePayloadFromRawBytes ...
 // https://docs.docker.com/engine/api/v1.30/#operation/ContainerAttach
 func CreatePayloadFromRawBytes(defaultType HijackedStreamType, raw []byte) HijackedStreamPayload {
+	raw = bytes.Trim(raw, "\n")
 	if len(raw) >= 8 {
 		header := [4]byte{}
 		copy(header[:], raw[:4])
