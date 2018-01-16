@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -133,30 +132,4 @@ func (c *Container) Upload(ctx context.Context, src *os.File, destdir string) er
 	}
 
 	return nil
-}
-
-// genExecCommand ...
-func (c *Container) genExecCommand(ctx context.Context, execution Execution) ([]string, error) {
-
-	if execution.Inline == "" && execution.Script == "" {
-		return nil, fmt.Errorf("either of `inline` or `script` must be specified as an execution")
-	}
-	if execution.Inline != "" {
-		return []string{"bash", "-c", execution.Inline}, nil
-	}
-
-	script, err := os.Open(execution.Script)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open your script file: %v", err)
-	}
-	defer script.Close()
-
-	if err := c.Upload(ctx, script, "/"); err != nil {
-		return nil, fmt.Errorf("failed to upload: %v", err)
-	}
-
-	// TODO: Fix this hard coding of using "sh"
-	//       It might be determined by extension of filename.
-	cmd := []string{"sh", "/" + filepath.Base(script.Name())}
-	return cmd, nil
 }
