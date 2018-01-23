@@ -17,11 +17,16 @@ type Execution struct {
 	Inline string
 	Script string
 	Env    []string
+
+	// If Inspect specified true, Container.Exec automatically inspects
+	// the status of given execution.
+	Inspect bool
+	types.ContainerExecInspect
 }
 
 // Exec executes specified command on this container.
 // Before calling "Exec", this container must be created and started.
-func (c *Container) Exec(ctx context.Context, execution Execution) (<-chan HijackedStreamPayload, error) {
+func (c *Container) Exec(ctx context.Context, execution *Execution) (<-chan HijackedStreamPayload, error) {
 
 	dkclient, err := c.Args.Machine.CreateClient()
 	if err != nil {
@@ -43,16 +48,17 @@ func (c *Container) Exec(ctx context.Context, execution Execution) (<-chan Hijac
 	if err != nil {
 		return nil, fmt.Errorf("Exec Create Error: %v", err)
 	}
+	execution.ExecID = execute.ID
 
 	hijacked, err := dkclient.ContainerExecAttach(ctx, execute.ID, types.ExecStartCheck{})
 	if err != nil {
 		return nil, fmt.Errorf("Exec Attach Error: %v", err)
 	}
-	return c.stream(hijacked)
+	return c.stream(ctx, hijacked, execution)
 }
 
 // genExecCommand ...
-func (c *Container) genExecCommand(ctx context.Context, execution Execution) ([]string, error) {
+func (c *Container) genExecCommand(ctx context.Context, execution *Execution) ([]string, error) {
 
 	if execution.Inline == "" && execution.Script == "" {
 		return nil, fmt.Errorf("either of `inline` or `script` must be specified as an execution")
@@ -78,7 +84,7 @@ func (c *Container) genExecCommand(ctx context.Context, execution Execution) ([]
 }
 
 // stream drains hijacked stdout/stderr response.
-func (c *Container) stream(hijacked types.HijackedResponse) (<-chan HijackedStreamPayload, error) {
+func (c *Container) stream(ctx context.Context, hijacked types.HijackedResponse, execution *Execution) (<-chan HijackedStreamPayload, error) {
 	stream := make(chan HijackedStreamPayload)
 	go func() {
 		buf := bufio.NewReader(hijacked.Reader)
@@ -97,8 +103,27 @@ func (c *Container) stream(hijacked types.HijackedResponse) (<-chan HijackedStre
 			}
 		}
 		hijacked.Close()
+		if execution.Inspect {
+			c.ExecInspect(ctx, execution)
+		}
 		close(stream)
 		return
 	}()
 	return stream, nil
+}
+
+// ExecInspect ...
+func (c *Container) ExecInspect(ctx context.Context, execution *Execution) error {
+	dkclient, err := c.Args.Machine.CreateClient()
+	if err != nil {
+		return err
+	}
+	defer dkclient.Close()
+
+	inspection, err := dkclient.ContainerExecInspect(ctx, execution.ExecID)
+	if err != nil {
+		return err
+	}
+	execution.ContainerExecInspect = inspection
+	return nil
 }
