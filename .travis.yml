@@ -1,8 +1,9 @@
 language: go
 go:
   - 1.8
-  - tip
-services:
-  - docker
+  # - tip
+install:
+  - go get -t ./...
+  - sudo curl -L https://github.com/docker/machine/releases/download/v0.13.0/docker-machine-`uname -s`-`uname -m` > /home/travis/bin/docker-machine && sudo chmod a+x /home/travis/bin/docker-machine
 scripts:
-  - go test -cover
+  - go test -v
