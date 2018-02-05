@@ -94,11 +94,11 @@ func (c *Container) stream(ctx context.Context, hijacked types.HijackedResponse,
 			b, err := buf.ReadBytes('\n')
 			// If raw bytes doesn't have header, use previous io type as a default.
 			if err == nil {
-				// TODO: might need to adjust more patterns
-				for _, line := range bytes.Split(b, []byte("\r")) {
-					payload = CreatePayloadFromRawBytes(payload.Type, line)
-					stream <- payload
-				}
+				// Ignore former output lines if it includes carriage return.
+				lines := bytes.Split(b, []byte("\r"))
+				line := lines[len(lines)-1]
+				payload = CreatePayloadFromRawBytes(payload.Type, line)
+				stream <- payload
 			} else {
 				if err != io.EOF {
 					log.Println("Buffer Error:", err)
