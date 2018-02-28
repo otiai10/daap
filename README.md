@@ -1,8 +1,8 @@
-# DaaP
+# daap
 
-Docker as a Process
+[![Build Status](https://travis-ci.org/otiai10/daap.svg?branch=master)](https://travis-ci.org/otiai10/daap) [![codecov](https://codecov.io/gh/otiai10/daap/branch/master/graph/badge.svg)](https://codecov.io/gh/otiai10/daap)
 
-[![Build Status](https://travis-ci.org/otiai10/daap.svg?branch=master)](https://travis-ci.org/otiai10/daap)
+Use Docker container as completely separated subprocess.
 
 # Example
 
@@ -18,5 +18,9 @@ ctx := context.Background()
 container.PullImage(ctx)
 container.Create(ctx)
 container.Start(ctx)
-container.Exec(ctx, &Execution{Inline: "uname -a"})
+
+stream, _ := container.Exec(ctx, &Execution{Inline: "uname -a"})
+for payload := range stream {
+    fmt.Println(payload.Text())
+}
 ```
