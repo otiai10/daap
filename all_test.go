@@ -1,7 +1,6 @@
 package daap
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -33,6 +32,5 @@ func TestMain(m *testing.M) {
 func TestNewContainer(t *testing.T) {
 	container := NewContainer("debian:latest", Args{Machine: testmachine})
 	Expect(t, container).TypeOf("*daap.Container")
-	fmt.Printf("Container: %+v\n", container)
-	fmt.Printf("Machine: %+v\n", container.Args.Machine)
+	Expect(t, container.Args.Machine.CertPath).ToBe(testmachine.CertPath)
 }

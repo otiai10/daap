@@ -80,7 +80,8 @@ func (c *Container) Create(ctx context.Context) error {
 			AttachStderr: true,
 		},
 		&container.HostConfig{
-			Mounts: mounts,
+			Mounts:      mounts,
+			NetworkMode: "host", // TODO: make configurable
 		},
 		&network.NetworkingConfig{},
 		c.Args.Name,
