@@ -29,5 +29,5 @@ func TestMain(m *testing.M) {
 func TestNewContainer(t *testing.T) {
 	container := NewContainer("debian:latest", testmachine)
 	Expect(t, container).TypeOf("*daap.Container")
-	Expect(t, container.Machine).TypeOf("daap.Machine")
+	Expect(t, container.Machine).TypeOf("*dkmachine.Machine")
 }
