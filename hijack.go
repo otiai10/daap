@@ -22,6 +22,11 @@ type HijackedStreamPayload struct {
 	Data []byte
 }
 
+// Text is just a shorthand to stringify data of payload.
+func (payload HijackedStreamPayload) Text() string {
+	return string(payload.Data)
+}
+
 // CreatePayloadFromRawBytes ...
 // https://docs.docker.com/engine/api/v1.30/#operation/ContainerAttach
 func CreatePayloadFromRawBytes(defaultType HijackedStreamType, raw []byte) HijackedStreamPayload {
