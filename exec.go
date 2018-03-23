@@ -116,7 +116,7 @@ func (c *Container) stream(ctx context.Context, hijacked types.HijackedResponse,
 	return stream, nil
 }
 
-// ExecInspect ...
+// ExecInspect inspect the status of given execution.
 func (c *Container) ExecInspect(ctx context.Context, execution *Execution) error {
 	dkclient, err := c.getClient()
 	if err != nil {

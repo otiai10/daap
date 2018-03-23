@@ -24,28 +24,6 @@ func (c *Container) Create(ctx context.Context, config CreateConfig) error {
 	}
 	defer dkclient.Close()
 
-	// mounts := []mount.Mount{}
-	// for _, m := range c.Args.Mounts {
-	// 	mounts = append(mounts, m.ToDockerAPITypeMount())
-	// }
-	// c.ContainerCreateCreatedBody, err = dkclient.ContainerCreate(
-	// 	ctx,
-	// 	&container.Config{
-	// 		Image:        c.Image,
-	// 		Env:          []string{}, // Env variables with formatted "key=value"
-	// 		Tty:          true,       // To keep alive
-	// 		AttachStdout: true,
-	// 		AttachStderr: true,
-	// 	},
-	// 	&container.HostConfig{
-	// 		Mounts:      mounts,
-	// 		NetworkMode: "host", // TODO: make configurable
-	// 		Privileged:  true,
-	// 	},
-	// 	&network.NetworkingConfig{},
-	// 	c.Args.Name,
-	// )
-
 	if config.Container == nil {
 		config.Container = &container.Config{}
 	}
@@ -71,19 +49,7 @@ func (c *Container) Create(ctx context.Context, config CreateConfig) error {
 	c.ContainerCreateCreatedBody, err = dkclient.ContainerCreate(
 		ctx,
 		config.Container,
-		// &container.Config{
-		// 	Image:        c.Image,
-		// 	Env:          []string{}, // Env variables with formatted "key=value"
-		// 	Tty:          true,       // To keep alive
-		// 	AttachStdout: true,
-		// 	AttachStderr: true,
-		// },
 		config.Host,
-		// &container.HostConfig{
-		// 	Mounts:      mounts,
-		// 	NetworkMode: "host", // TODO: make configurable
-		// 	Privileged:  true,
-		// },
 		config.Network,
 		config.Name,
 	)
