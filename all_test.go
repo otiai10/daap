@@ -9,7 +9,7 @@ import (
 	"github.com/otiai10/ternary"
 )
 
-var testmachine *MachineConfig
+var testmachine Machine
 
 func TestMain(m *testing.M) {
 	machine, err := dkmachine.Create(&dkmachine.CreateOptions{
@@ -18,10 +18,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	testmachine = &MachineConfig{
-		Host:     machine.Host(),
-		CertPath: machine.CertPath(),
-	}
+	testmachine = machine
 	code := m.Run()
 	if err := machine.Remove(); err != nil {
 		panic(err)
@@ -30,7 +27,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewContainer(t *testing.T) {
-	container := NewContainer("debian:latest", Args{Machine: testmachine})
+	container := NewContainer("debian:latest", testmachine)
 	Expect(t, container).TypeOf("*daap.Container")
-	Expect(t, container.Args.Machine.CertPath).ToBe(testmachine.CertPath)
+	Expect(t, container.Machine).TypeOf("daap.Machine")
 }

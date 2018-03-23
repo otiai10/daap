@@ -29,7 +29,7 @@ type Execution struct {
 // Before calling "Exec", this container must be created and started.
 func (c *Container) Exec(ctx context.Context, execution *Execution) (<-chan HijackedStreamPayload, error) {
 
-	dkclient, err := c.Args.Machine.CreateClient()
+	dkclient, err := c.getClient()
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (c *Container) stream(ctx context.Context, hijacked types.HijackedResponse,
 
 // ExecInspect ...
 func (c *Container) ExecInspect(ctx context.Context, execution *Execution) error {
-	dkclient, err := c.Args.Machine.CreateClient()
+	dkclient, err := c.getClient()
 	if err != nil {
 		return err
 	}
