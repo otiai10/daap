@@ -15,6 +15,10 @@ type Container struct {
 	// Args    Args
 	Machine Machine
 	container.ContainerCreateCreatedBody
+
+	// RetryCount for Exec (ExecCreate, ExecAttach).
+	// See "retry.go" for more information.
+	RetryCount int
 }
 
 // NewContainer creates a definition of a container.

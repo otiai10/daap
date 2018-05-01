@@ -40,18 +40,33 @@ func (c *Container) Exec(ctx context.Context, execution *Execution) (<-chan Hija
 		return nil, err
 	}
 
-	execute, err := dkclient.ContainerExecCreate(ctx, c.ID, types.ExecConfig{
-		Cmd:          cmd,
-		AttachStdout: true,
-		AttachStderr: true,
-		Env:          execution.Env,
-	})
+	err = c.retry(func() error {
+		execresp, err := dkclient.ContainerExecCreate(ctx, c.ID, types.ExecConfig{
+			Cmd:          cmd,
+			AttachStdout: true,
+			AttachStderr: true,
+			Env:          execution.Env,
+		})
+		if err != nil {
+			return err
+		}
+		execution.ExecID = execresp.ID
+		return nil
+	}, 0, nil)
+
 	if err != nil {
 		return nil, fmt.Errorf("Exec Create Error: %v", err)
 	}
-	execution.ExecID = execute.ID
 
-	hijacked, err := dkclient.ContainerExecAttach(ctx, execute.ID, types.ExecStartCheck{})
+	var hijacked types.HijackedResponse
+	err = c.retry(func() error {
+		hijacked, err = dkclient.ContainerExecAttach(ctx, execution.ExecID, types.ExecStartCheck{})
+		if err != nil {
+			return err
+		}
+		return nil
+	}, 0, nil)
+
 	if err != nil {
 		return nil, fmt.Errorf("Exec Attach Error: %v", err)
 	}
