@@ -14,7 +14,7 @@ import (
 // Volume ...
 type Volume struct {
 	Machine Machine
-	Config  volume.VolumesCreateBody
+	Config  volume.VolumeCreateBody
 	types.Volume
 }
 
